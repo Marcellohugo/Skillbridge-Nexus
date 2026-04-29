@@ -1,0 +1,48 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: kuchink_garonk_db_dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: kuchink_garonk
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d kuchink_garonk"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app-dev:
+    image: node:22-alpine
+    container_name: kuchink_garonk_app_dev
+    working_dir: /app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: development
+      NEXT_TELEMETRY_DISABLED: "1"
+      CHOKIDAR_USEPOLLING: "true"
+      WATCHPACK_POLLING: "true"
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/kuchink_garonk?schema=public
+      JWT_SECRET: development-secret-key-minimum-32-chars
+      APP_URL: http://localhost:3000
+      EMAIL_PROVIDER: console
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+      - node_modules_dev:/app/node_modules
+      - next_cache_dev:/app/.next
+    command: sh -c "mkdir -p .next && find .next -mindepth 1 -maxdepth 1 -exec rm -rf {} + && npm install && npm run dev -- --hostname 0.0.0.0 --port 3000"
+
+volumes:
+  postgres_dev_data:
+  node_modules_dev:
+  next_cache_dev:

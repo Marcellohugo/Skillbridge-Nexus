@@ -1,0 +1,792 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────
+
+enum Role {
+  LEARNER
+  MENTOR
+  ADMIN
+  INSTITUTION_MANAGER
+}
+
+enum AuthTokenType {
+  EMAIL_VERIFICATION
+  PASSWORD_RESET
+}
+
+enum ContentType {
+  VIDEO
+  ARTICLE
+  INTERACTIVE
+  PROJECT
+  QUIZ
+  WORKSHOP
+  PODCAST
+}
+
+enum SessionStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  COMPLETED
+  CANCELLED
+}
+
+enum NotificationType {
+  ASSESSMENT_COMPLETED
+  LEARNING_PATH_GENERATED
+  MILESTONE_REACHED
+  MENTOR_REQUEST_ACCEPTED
+  MENTOR_REQUEST_REJECTED
+  INTERVENTION_RECOMMENDED
+  EVIDENCE_VALIDATED
+  BADGE_EARNED
+  GENERAL
+}
+
+enum InterventionType {
+  RECOMMEND_MENTOR
+  REMEDIAL_LEARNING
+  SHORTEN_TARGETS
+  QUICK_WIN_MODULE
+  MOTIVATIONAL_REMINDER
+  ADMIN_ALERT
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum TRIMilestone {
+  EMERGING
+  DEVELOPING
+  PROGRESSING
+  CAREER_READY
+  ADVANCED_READY
+}
+
+enum DependencyType {
+  PREREQUISITE
+  COREQUISITE
+  RECOMMENDED
+}
+
+// ─────────────────────────────────────────────
+// USER & AUTH
+// ─────────────────────────────────────────────
+
+model User {
+  id             String   @id @default(cuid())
+  email          String   @unique
+  name           String
+  passwordHash   String
+  role           Role     @default(LEARNER)
+  avatarUrl      String?
+  isActive       Boolean  @default(true)
+  emailVerified  Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  learnerProfile         LearnerProfile?
+  mentorProfile          MentorProfile?
+  institutionMemberships InstitutionMember[]
+  notifications          Notification[]
+  activityLogs           ActivityLog[]
+  authTokens             AuthToken[]
+  securityEvents         SecurityEvent[]
+  badges                 UserBadge[]
+  sentSessions           MentoringSession[] @relation("SessionMentee")
+  receivedSessions       MentoringSession[] @relation("SessionMentor")
+
+  @@index([email])
+  @@index([role])
+}
+
+model AuthToken {
+  id         String        @id @default(cuid())
+  userId     String
+  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type       AuthTokenType
+  tokenHash  String        @unique
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime      @default(now())
+
+  @@index([userId, type])
+  @@index([expiresAt])
+}
+
+model SecurityEvent {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String
+  email     String?
+  ipHash    String?
+  userAgent String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+model LearnerProfile {
+  id                  String       @id @default(cuid())
+  userId              String       @unique
+  user                User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName            String
+  educationStatus     String
+  department          String?
+  major               String?
+  targetCareerRoleId  String?
+  targetCareerRole    CareerRole?  @relation(fields: [targetCareerRoleId], references: [id])
+  weeklyHours         Int          @default(5)
+  learningStyle       String       @default("visual")
+  mentoringStyle      String       @default("structured")
+  languagePreference  String       @default("id")
+  onboardingCompleted Boolean      @default(false)
+  cohortId            String?
+  cohort              Cohort?      @relation(fields: [cohortId], references: [id])
+  currentTRI          Float        @default(0)
+  triMilestone        TRIMilestone @default(EMERGING)
+  careerFitScore      Float        @default(0)
+  riskLevel           RiskLevel    @default(LOW)
+  streakDays          Int          @default(0)
+  lastActiveAt        DateTime?
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+
+  accessibilityProfile AccessibilityProfile?
+  assessmentSessions   AssessmentSession[]
+  skillScoreSnapshots  SkillScoreSnapshot[]
+  skillGapSnapshots    SkillGapSnapshot[]
+  learningPath         LearningPath?
+  portfolioProjects    PortfolioProject[]
+  interventionRecords  InterventionRecord[]
+  triHistory           TRIHistory[]
+  confidenceRatings    ConfidenceRating[]
+
+  @@index([userId])
+  @@index([targetCareerRoleId])
+  @@index([cohortId])
+}
+
+model MentorProfile {
+  id                 String   @id @default(cuid())
+  userId             String   @unique
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  biography          String   @db.Text
+  yearsExperience    Int      @default(0)
+  industries         String[]
+  mentoringTopics    String[]
+  communicationStyle String   @default("structured")
+  sessionFormat      String   @default("video")
+  languagesSpoken    String[] @default(["id"])
+  isAvailable        Boolean  @default(true)
+  totalSessions      Int      @default(0)
+  avgRating          Float    @default(0)
+  validatedAt        DateTime?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  expertiseSkills MentorExpertiseSkill[]
+  availability    MentorAvailability[]
+  sessions        MentoringSession[]     @relation("MentorSessions")
+
+  @@index([userId])
+}
+
+// ─────────────────────────────────────────────
+// INSTITUTION & COHORT
+// ─────────────────────────────────────────────
+
+model Institution {
+  id        String   @id @default(cuid())
+  name      String
+  type      String
+  logoUrl   String?
+  city      String?
+  country   String   @default("ID")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cohorts  Cohort[]
+  members  InstitutionMember[]
+}
+
+model Cohort {
+  id            String      @id @default(cuid())
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id])
+  name          String
+  program       String?
+  startDate     DateTime?
+  endDate       DateTime?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  learners LearnerProfile[]
+
+  @@index([institutionId])
+}
+
+model InstitutionMember {
+  id            String      @id @default(cuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id])
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id])
+  role          String      @default("manager")
+  createdAt     DateTime    @default(now())
+
+  @@unique([userId, institutionId])
+}
+
+// ─────────────────────────────────────────────
+// COMPETENCY GRAPH
+// ─────────────────────────────────────────────
+
+model SkillCategory {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  description String?
+  icon      String?
+  color     String?
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  skills Skill[]
+}
+
+model Skill {
+  id             String        @id @default(cuid())
+  categoryId     String
+  category       SkillCategory @relation(fields: [categoryId], references: [id])
+  name           String
+  description    String?       @db.Text
+  isFoundational Boolean       @default(false)
+  maxLevel       Int           @default(5)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  subSkills             SubSkill[]
+  prerequisiteFor       SkillDependency[]              @relation("DependentSkill")
+  prerequisites         SkillDependency[]              @relation("PrerequisiteSkill")
+  careerRequirements    CareerRoleSkillRequirement[]
+  moduleSkillMappings   LearningModuleSkillMapping[]
+  questionSkillMappings AssessmentQuestionSkillMapping[]
+  mentorExpertise       MentorExpertiseSkill[]
+  evidenceSkillMappings PortfolioEvidenceSkill[]
+  scoreSnapshots        SkillScoreSnapshot[]
+  gapSnapshots          SkillGapSnapshot[]
+  confidenceRatings     ConfidenceRating[]
+
+  @@index([categoryId])
+}
+
+model SubSkill {
+  id        String   @id @default(cuid())
+  skillId   String
+  skill     Skill    @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  name      String
+  description String?
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([skillId])
+}
+
+model SkillDependency {
+  id             String         @id @default(cuid())
+  skillId        String
+  skill          Skill          @relation("DependentSkill", fields: [skillId], references: [id])
+  prerequisiteId String
+  prerequisite   Skill          @relation("PrerequisiteSkill", fields: [prerequisiteId], references: [id])
+  type           DependencyType @default(PREREQUISITE)
+  minLevel       Int            @default(2)
+  createdAt      DateTime       @default(now())
+
+  @@unique([skillId, prerequisiteId])
+  @@index([skillId])
+  @@index([prerequisiteId])
+}
+
+// ─────────────────────────────────────────────
+// CAREER ROLES
+// ─────────────────────────────────────────────
+
+model CareerRole {
+  id            String   @id @default(cuid())
+  name          String   @unique
+  slug          String   @unique
+  description   String   @db.Text
+  industry      String   @default("Technology")
+  salaryRange   String?
+  demandLevel   String   @default("high")
+  adjacentRoles String[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  skillRequirements CareerRoleSkillRequirement[]
+  learners          LearnerProfile[]
+
+  @@index([slug])
+}
+
+model CareerRoleSkillRequirement {
+  id               String     @id @default(cuid())
+  careerRoleId     String
+  careerRole       CareerRole @relation(fields: [careerRoleId], references: [id])
+  skillId          String
+  skill            Skill      @relation(fields: [skillId], references: [id])
+  targetLevel      Int
+  importanceWeight Float      @default(1.0)
+  isCritical       Boolean    @default(false)
+  isFoundational   Boolean    @default(false)
+  createdAt        DateTime   @default(now())
+
+  @@unique([careerRoleId, skillId])
+  @@index([careerRoleId])
+  @@index([skillId])
+}
+
+// ─────────────────────────────────────────────
+// ASSESSMENT ENGINE
+// ─────────────────────────────────────────────
+
+model Assessment {
+  id          String   @id @default(cuid())
+  title       String
+  description String?  @db.Text
+  type        String   @default("diagnostic")
+  totalPoints Int      @default(100)
+  timeLimit   Int?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  questions AssessmentQuestion[]
+  sessions  AssessmentSession[]
+}
+
+model AssessmentQuestion {
+  id              String     @id @default(cuid())
+  assessmentId    String
+  assessment      Assessment @relation(fields: [assessmentId], references: [id])
+  text            String     @db.Text
+  type            String     @default("mcq")
+  difficulty      Int        @default(2)
+  points          Int        @default(10)
+  explanation     String?    @db.Text
+  sortOrder       Int        @default(0)
+  adaptiveTrigger String?
+  createdAt       DateTime   @default(now())
+
+  options       AssessmentOption[]
+  responses     AssessmentResponse[]
+  skillMappings AssessmentQuestionSkillMapping[]
+
+  @@index([assessmentId])
+}
+
+model AssessmentOption {
+  id          String             @id @default(cuid())
+  questionId  String
+  question    AssessmentQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  text        String
+  isCorrect   Boolean            @default(false)
+  points      Int                @default(0)
+  explanation String?
+  sortOrder   Int                @default(0)
+
+  @@index([questionId])
+}
+
+model AssessmentQuestionSkillMapping {
+  id         String             @id @default(cuid())
+  questionId String
+  question   AssessmentQuestion @relation(fields: [questionId], references: [id])
+  skillId    String
+  skill      Skill              @relation(fields: [skillId], references: [id])
+  weight     Float              @default(1.0)
+
+  @@unique([questionId, skillId])
+}
+
+model AssessmentSession {
+  id            String         @id @default(cuid())
+  learnerId     String
+  learner       LearnerProfile @relation(fields: [learnerId], references: [id])
+  assessmentId  String
+  assessment    Assessment     @relation(fields: [assessmentId], references: [id])
+  startedAt     DateTime       @default(now())
+  completedAt   DateTime?
+  totalScore    Float?
+  maxScore      Float?
+  confidenceAvg Float?
+  adaptivePath  String[]       @default([])
+  status        String         @default("in_progress")
+  createdAt     DateTime       @default(now())
+
+  responses AssessmentResponse[]
+
+  @@index([learnerId])
+  @@index([assessmentId])
+}
+
+model AssessmentResponse {
+  id               String             @id @default(cuid())
+  sessionId        String
+  session          AssessmentSession  @relation(fields: [sessionId], references: [id])
+  questionId       String
+  question         AssessmentQuestion @relation(fields: [questionId], references: [id])
+  selectedOptionId String?
+  selfRating       Int?
+  textAnswer       String?
+  isCorrect        Boolean?
+  points           Float              @default(0)
+  confidence       Int?
+  timeSpent        Int?
+  createdAt        DateTime           @default(now())
+
+  @@index([sessionId])
+}
+
+// ─────────────────────────────────────────────
+// SKILL SCORES & GAPS
+// ─────────────────────────────────────────────
+
+model SkillScoreSnapshot {
+  id          String         @id @default(cuid())
+  learnerId   String
+  learner     LearnerProfile @relation(fields: [learnerId], references: [id])
+  skillId     String
+  skill       Skill          @relation(fields: [skillId], references: [id])
+  score       Float
+  confidence  Float          @default(3.0)
+  evidenceStr Float          @default(0)
+  snapshotAt  DateTime       @default(now())
+
+  @@index([learnerId])
+  @@index([skillId])
+}
+
+model SkillGapSnapshot {
+  id           String         @id @default(cuid())
+  learnerId    String
+  learner      LearnerProfile @relation(fields: [learnerId], references: [id])
+  skillId      String
+  skill        Skill          @relation(fields: [skillId], references: [id])
+  currentLevel Float
+  targetLevel  Float
+  gap          Float
+  weightedGap  Float
+  isCritical   Boolean        @default(false)
+  isBlocker    Boolean        @default(false)
+  snapshotAt   DateTime       @default(now())
+
+  @@index([learnerId])
+}
+
+model ConfidenceRating {
+  id        String         @id @default(cuid())
+  learnerId String
+  learner   LearnerProfile @relation(fields: [learnerId], references: [id])
+  skillId   String
+  skill     Skill          @relation(fields: [skillId], references: [id])
+  rating    Int
+  ratedAt   DateTime       @default(now())
+
+  @@index([learnerId])
+}
+
+// ─────────────────────────────────────────────
+// LEARNING PATH
+// ─────────────────────────────────────────────
+
+model LearningModule {
+  id                    String      @id @default(cuid())
+  title                 String
+  description           String      @db.Text
+  contentType           ContentType @default(VIDEO)
+  difficulty            Int         @default(2)
+  estimatedMinutes      Int         @default(30)
+  thumbnailUrl          String?
+  contentUrl            String?
+  provider              String?
+  accessibilitySupports String[]    @default([])
+  prerequisites         String[]    @default([])
+  learningOutcomes      String[]    @default([])
+  isActive              Boolean     @default(true)
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+
+  skillMappings LearningModuleSkillMapping[]
+  pathItems     LearningPathItem[]
+}
+
+model LearningModuleSkillMapping {
+  id         String         @id @default(cuid())
+  moduleId   String
+  module     LearningModule @relation(fields: [moduleId], references: [id])
+  skillId    String
+  skill      Skill          @relation(fields: [skillId], references: [id])
+  levelGain  Int            @default(1)
+  isPrimary  Boolean        @default(false)
+
+  @@unique([moduleId, skillId])
+}
+
+model LearningPath {
+  id             String         @id @default(cuid())
+  learnerId      String         @unique
+  learner        LearnerProfile @relation(fields: [learnerId], references: [id])
+  generatedAt    DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  estimatedWeeks Int            @default(12)
+  weeklyHours    Int            @default(5)
+  status         String         @default("active")
+  completionPct  Float          @default(0)
+
+  items LearningPathItem[]
+}
+
+model LearningPathItem {
+  id          String         @id @default(cuid())
+  pathId      String
+  path        LearningPath   @relation(fields: [pathId], references: [id])
+  moduleId    String
+  module      LearningModule @relation(fields: [moduleId], references: [id])
+  sortOrder   Int
+  isCompleted Boolean        @default(false)
+  completedAt DateTime?
+  isQuickWin  Boolean        @default(false)
+  isMilestone Boolean        @default(false)
+  isRescue    Boolean        @default(false)
+  whyReason   String?        @db.Text
+  notes       String?        @db.Text
+  dueDate     DateTime?
+
+  @@index([pathId])
+}
+
+// ─────────────────────────────────────────────
+// ACCESSIBILITY
+// ─────────────────────────────────────────────
+
+model AccessibilityProfile {
+  id               String         @id @default(cuid())
+  learnerId        String         @unique
+  learner          LearnerProfile @relation(fields: [learnerId], references: [id])
+  fontSize         String         @default("medium")
+  highContrast     Boolean        @default(false)
+  reducedMotion    Boolean        @default(false)
+  dyslexiaFont     Boolean        @default(false)
+  keyboardFirst    Boolean        @default(false)
+  focusMode        Boolean        @default(false)
+  simplifiedReading Boolean       @default(false)
+  textToSpeech     Boolean        @default(false)
+  contentDensity   String         @default("normal")
+  calmView         Boolean        @default(false)
+  colorTheme       String         @default("system")
+  updatedAt        DateTime       @updatedAt
+}
+
+// ─────────────────────────────────────────────
+// MENTORING
+// ─────────────────────────────────────────────
+
+model MentorExpertiseSkill {
+  id             String        @id @default(cuid())
+  mentorId       String
+  mentor         MentorProfile @relation(fields: [mentorId], references: [id])
+  skillId        String
+  skill          Skill         @relation(fields: [skillId], references: [id])
+  expertiseLevel Int           @default(4)
+
+  @@unique([mentorId, skillId])
+}
+
+model MentorAvailability {
+  id         String        @id @default(cuid())
+  mentorId   String
+  mentor     MentorProfile @relation(fields: [mentorId], references: [id])
+  dayOfWeek  Int
+  startTime  String
+  endTime    String
+  timezone   String        @default("Asia/Jakarta")
+
+  @@index([mentorId])
+}
+
+model MentoringSession {
+  id              String        @id @default(cuid())
+  menteeId        String
+  mentee          User          @relation("SessionMentee", fields: [menteeId], references: [id])
+  mentorId        String
+  mentor          User          @relation("SessionMentor", fields: [mentorId], references: [id])
+  mentorProfileId String?
+  mentorProfile   MentorProfile? @relation("MentorSessions", fields: [mentorProfileId], references: [id])
+  scheduledAt     DateTime
+  durationMinutes Int           @default(60)
+  status          SessionStatus @default(PENDING)
+  topic           String?
+  notes           String?       @db.Text
+  actionItems     String[]      @default([])
+  menteeRating    Int?
+  menteeFeedback  String?
+  triContribution Float         @default(0)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([menteeId])
+  @@index([mentorId])
+}
+
+// ─────────────────────────────────────────────
+// PORTFOLIO
+// ─────────────────────────────────────────────
+
+model PortfolioProject {
+  id               String         @id @default(cuid())
+  learnerId        String
+  learner          LearnerProfile @relation(fields: [learnerId], references: [id])
+  title            String
+  description      String         @db.Text
+  projectUrl       String?
+  screenshotUrl    String?
+  techStack        String[]       @default([])
+  completedAt      DateTime?
+  isValidated      Boolean        @default(false)
+  validatedBy      String?
+  validationNote   String?
+  evidenceStrength Float          @default(0)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  skillMappings PortfolioEvidenceSkill[]
+
+  @@index([learnerId])
+}
+
+model PortfolioEvidenceSkill {
+  id        String           @id @default(cuid())
+  projectId String
+  project   PortfolioProject @relation(fields: [projectId], references: [id])
+  skillId   String
+  skill     Skill            @relation(fields: [skillId], references: [id])
+  strength  Int              @default(3)
+
+  @@unique([projectId, skillId])
+}
+
+// ─────────────────────────────────────────────
+// BADGES & CREDENTIALS
+// ─────────────────────────────────────────────
+
+model Badge {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String
+  iconUrl     String?
+  color       String   @default("#14b8a6")
+  criteria    String   @db.Text
+  category    String   @default("achievement")
+  createdAt   DateTime @default(now())
+
+  userBadges UserBadge[]
+}
+
+model UserBadge {
+  id       String   @id @default(cuid())
+  userId   String
+  user     User     @relation(fields: [userId], references: [id])
+  badgeId  String
+  badge    Badge    @relation(fields: [badgeId], references: [id])
+  earnedAt DateTime @default(now())
+  context  String?
+
+  @@unique([userId, badgeId])
+  @@index([userId])
+}
+
+// ─────────────────────────────────────────────
+// NOTIFICATIONS & ACTIVITY
+// ─────────────────────────────────────────────
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id])
+  type      NotificationType
+  title     String
+  message   String
+  isRead    Boolean          @default(false)
+  actionUrl String?
+  createdAt DateTime         @default(now())
+
+  @@index([userId])
+  @@index([isRead])
+}
+
+model ActivityLog {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  action      String
+  description String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+}
+
+// ─────────────────────────────────────────────
+// TRI & INTERVENTIONS
+// ─────────────────────────────────────────────
+
+model TRIHistory {
+  id               String         @id @default(cuid())
+  learnerId        String
+  learner          LearnerProfile @relation(fields: [learnerId], references: [id])
+  score            Float
+  milestone        TRIMilestone
+  assessmentScore  Float          @default(0)
+  roleFitScore     Float          @default(0)
+  learningScore    Float          @default(0)
+  mentoringScore   Float          @default(0)
+  portfolioScore   Float          @default(0)
+  consistencyScore Float          @default(0)
+  recordedAt       DateTime       @default(now())
+
+  @@index([learnerId])
+}
+
+model InterventionRecord {
+  id             String           @id @default(cuid())
+  learnerId      String
+  learner        LearnerProfile   @relation(fields: [learnerId], references: [id])
+  type           InterventionType
+  riskLevel      RiskLevel
+  trigger        String           @db.Text
+  recommendation String           @db.Text
+  isResolved     Boolean          @default(false)
+  resolvedAt     DateTime?
+  createdAt      DateTime         @default(now())
+
+  @@index([learnerId])
+}
