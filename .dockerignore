@@ -1,0 +1,14 @@
+.git
+.gitignore
+.vscode
+.next
+node_modules
+coverage
+backups
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+.env
+.env.*
+!.env.example
