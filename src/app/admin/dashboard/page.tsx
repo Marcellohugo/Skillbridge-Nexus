@@ -1,9 +1,12 @@
 import Link from "next/link";
 import { Badge, Callout, Card, CardHeader, StatCard } from "@/components/ui";
-import { DEMO_ADMIN_STATS } from "@/lib/demo-data";
 import { formatNumber } from "@/lib/i18n";
+import { getPlatformMetricsAction } from "@/features/admin/platform.actions";
 
-export default function AdminDashboardPage() {
+export default async function AdminDashboardPage() {
+  const result = await getPlatformMetricsAction();
+  const metrics = result.ok ? result.data : null;
+
   return (
     <div className="container-app py-8 lg:py-10 stack-xl stack">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -14,95 +17,73 @@ export default function AdminDashboardPage() {
         </div>
         <div className="flex gap-2">
           <Link href="/admin/analytics" className="btn btn-secondary">Analitik</Link>
-          <Link href="/admin/users" className="btn btn-primary">Kelola pengguna →</Link>
+          <Link href="/admin/users" className="btn btn-primary">Kelola pengguna -&gt;</Link>
         </div>
       </header>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Total pengguna" value={formatNumber(DEMO_ADMIN_STATS.totalUsers)} tone="brand" delta={`+${DEMO_ADMIN_STATS.monthlyGrowth}% bulan`} hint="Semua role" />
-        <StatCard label="Learner aktif" value={`${DEMO_ADMIN_STATS.activeLearners}`} tone="accent" delta={`${Math.round((DEMO_ADMIN_STATS.activeLearners / DEMO_ADMIN_STATS.totalUsers) * 100)}% dari total`} hint="Aktif 30 hari" />
-        <StatCard label="Mentors" value={`${DEMO_ADMIN_STATS.mentors}`} tone="success" delta="terverifikasi" hint="Pool mentor aktif" />
-        <StatCard label="Avg TRI" value={`${DEMO_ADMIN_STATS.avgTRI}`} tone="info" delta="platform-wide" hint="Rata-rata seluruh learner" />
-      </div>
+      {!metrics && (
+        <Callout tone="danger" title="Metrik tidak tersedia">
+          {result.ok ? "Data belum tersedia." : result.error}
+        </Callout>
+      )}
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader title="Manajemen pengguna" subtitle="Pengelompokan berdasarkan role dan status" action={<Link href="/admin/users" className="text-sm text-primary hover:underline">Kelola →</Link>} />
-          <div className="space-y-2">
-            {[
-              { role: "Learner", count: DEMO_ADMIN_STATS.activeLearners, status: "Aktif", tone: "success" as const },
-              { role: "Mentor", count: DEMO_ADMIN_STATS.mentors, status: "Aktif", tone: "success" as const },
-              { role: "Manajer institusi", count: DEMO_ADMIN_STATS.institutions, status: "Aktif", tone: "success" as const },
-              { role: "Ditangguhkan", count: 12, status: "Perlu cek", tone: "warning" as const },
-            ].map((item) => (
-              <div key={item.role} className="flex items-center justify-between p-3 rounded-lg border border-border bg-background-secondary/40">
-                <div>
-                  <p className="font-semibold text-sm">{item.role}</p>
-                  <p className="text-xs text-foreground-muted">{item.count} pengguna</p>
-                </div>
-                <Badge tone={item.tone}>{item.status}</Badge>
-              </div>
-            ))}
+      {metrics && (
+        <>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <StatCard label="Total pengguna" value={formatNumber(metrics.totalUsers)} tone="brand" delta={`${metrics.activeUsers} aktif`} hint="Semua role" />
+            <StatCard label="Learner" value={formatNumber(metrics.learners)} tone="accent" delta={`${metrics.totalAssessments} asesmen`} hint="Terdaftar di platform" />
+            <StatCard label="Mentor" value={formatNumber(metrics.mentors)} tone="success" delta={`${metrics.totalSessions} sesi`} hint="Sesi mentoring total" />
+            <StatCard label="Avg TRI" value={`${metrics.avgTRI}`} tone="info" delta="platform-wide" hint="Rata-rata seluruh learner" />
           </div>
-        </Card>
 
-        <Card>
-          <CardHeader title="Manajemen konten" subtitle="Skill graph, modul, dan asesmen" action={<Link href="/admin/skills" className="text-sm text-primary hover:underline">Kelola →</Link>} />
-          <div className="space-y-2">
-            {[
-              { type: "Kategori skill", count: 12, tone: "brand" as const },
-              { type: "Skill", count: 342, tone: "brand" as const },
-              { type: "Modul belajar", count: 89, tone: "warning" as const, note: "3 sedang review" },
-              { type: "Asesmen", count: 34, tone: "success" as const },
-            ].map((item) => (
-              <div key={item.type} className="flex items-center justify-between p-3 rounded-lg border border-border bg-background-secondary/40">
-                <div>
-                  <p className="font-semibold text-sm">{item.type}</p>
-                  <p className="text-xs text-foreground-muted">{item.count} items{item.note ? ` · ${item.note}` : ""}</p>
-                </div>
-                <Badge tone={item.tone}>{item.note ? "Review" : "Aktif"}</Badge>
+          <div className="grid gap-6 lg:grid-cols-2">
+            <Card>
+              <CardHeader title="Komposisi role" subtitle="Berdasarkan user aktif di database" action={<Link href="/admin/users" className="text-sm text-primary hover:underline">Kelola -&gt;</Link>} />
+              <div className="space-y-2">
+                {[
+                  { role: "Learner", count: metrics.learners, tone: "brand" as const },
+                  { role: "Mentor", count: metrics.mentors, tone: "success" as const },
+                  { role: "Admin", count: metrics.admins, tone: "info" as const },
+                  { role: "Manajer institusi", count: metrics.institutionManagers, tone: "accent" as const },
+                ].map((item) => (
+                  <div key={item.role} className="flex items-center justify-between rounded-lg border border-border bg-background-secondary/40 p-3">
+                    <div>
+                      <p className="font-semibold text-sm">{item.role}</p>
+                      <p className="text-xs text-foreground-muted">{item.count} pengguna</p>
+                    </div>
+                    <Badge tone={item.tone}>Aktif</Badge>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </Card>
-      </div>
+            </Card>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
-          <CardHeader title="Kesehatan sistem" subtitle="Dalam 60 menit terakhir" />
-          <div className="grid gap-3 sm:grid-cols-2">
-            {[
-              { metric: "API Response Time", value: "142ms", status: "healthy" },
-              { metric: "Database Load", value: "45%", status: "healthy" },
-              { metric: "Cache Hit Rate", value: "87%", status: "healthy" },
-              { metric: "Error Rate", value: "0.02%", status: "healthy" },
-            ].map((m) => (
-              <div key={m.metric} className="flex items-center justify-between p-3 rounded-lg border border-border bg-background-secondary/40">
-                <p className="text-sm">{m.metric}</p>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-semibold">{m.value}</span>
-                  <span className="h-2 w-2 rounded-full bg-success" aria-label="healthy" />
-                </div>
+            <Card>
+              <CardHeader title="Aktivitas platform" subtitle="Data agregat dari database" action={<Link href="/admin/analytics" className="text-sm text-primary hover:underline">Analitik -&gt;</Link>} />
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Metric label="Snapshot skill" value={metrics.totalSnapshots} />
+                <Metric label="Portfolio" value={metrics.totalProjects} />
+                <Metric label="Portfolio tervalidasi" value={metrics.validatedProjects} />
+                <Metric label="Badge diberikan" value={metrics.totalBadges} />
+                <Metric label="Intervensi terbuka" value={metrics.totalInterventions} />
+                <Metric label="Sesi mentoring" value={metrics.totalSessions} />
               </div>
-            ))}
+            </Card>
           </div>
-        </Card>
 
-        <Card>
-          <CardHeader title="Aktivitas hari ini" />
-          <ul className="space-y-2 text-sm">
-            <li className="flex justify-between"><span>Users baru</span><span className="font-semibold">15</span></li>
-            <li className="flex justify-between"><span>Asesmen selesai</span><span className="font-semibold">42</span></li>
-            <li className="flex justify-between"><span>Sesi mentoring</span><span className="font-semibold">8</span></li>
-            <li className="flex justify-between"><span>Konten terbit</span><span className="font-semibold">3</span></li>
-          </ul>
-          <Link href="/admin/analytics" className="btn btn-secondary w-full mt-4">Lihat analitik →</Link>
-        </Card>
-      </div>
+          <Callout tone="brand" title="Prioritas operasional">
+            Pantau learner berisiko dan intervensi terbuka lewat Analitik. Angka di halaman ini berasal dari database aktif.
+          </Callout>
+        </>
+      )}
+    </div>
+  );
+}
 
-      <Callout tone="brand" title="Tips admin">
-        Monitor <strong>learner berisiko</strong> dan <strong>cohort dengan pertumbuhan TRI rendah</strong> lewat Analitik. Intervensi dini meningkatkan retensi platform.
-      </Callout>
+function Metric({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="flex items-center justify-between rounded-lg border border-border bg-background-secondary/40 p-3">
+      <p className="text-sm text-foreground-secondary">{label}</p>
+      <span className="font-display text-lg font-bold">{formatNumber(value)}</span>
     </div>
   );
 }

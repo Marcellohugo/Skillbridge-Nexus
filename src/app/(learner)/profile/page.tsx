@@ -4,8 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { Badge, Button, Callout, Card, CardHeader, Input, Label } from "@/components/ui";
 import { useA11y } from "@/components/accessibility-provider";
-import { DEMO_LEARNER } from "@/lib/demo-data";
-import { updateLearnerProfileAction } from "@/features/learner/profile.actions";
+import { getLearnerProfileAction, updateLearnerProfileAction } from "@/features/learner/profile.actions";
 
 const LEARNING_STYLES = [
   { value: "visual", label: "Visual" },
@@ -30,20 +29,41 @@ const CAREER_TARGETS: { slug: string; label: string }[] = [
   { slug: "content-strategist", label: "Content Strategist" },
 ];
 
+function initialsOf(value: string) {
+  return value
+    .split(/[\s@._-]+/)
+    .filter(Boolean)
+    .map((part) => part[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase() || "LR";
+}
+
 export default function ProfilePage() {
   const { prefs, update, reset } = useA11y();
   const [status, setStatus] = React.useState<{ kind: "idle" | "saving" | "saved" | "error"; msg?: string }>({ kind: "idle" });
 
   const [data, setData] = React.useState({
-    name: DEMO_LEARNER.name,
-    email: DEMO_LEARNER.email,
-    educationStatus: DEMO_LEARNER.educationStatus,
-    careerTargetSlug: "frontend-developer",
+    name: "",
+    email: "",
+    educationStatus: "",
+    careerTargetSlug: "",
     learningStyle: "visual",
     mentoringStyle: "structured",
-    weeklyHours: 12,
+    weeklyHours: 5,
     language: "id",
   });
+
+  React.useEffect(() => {
+    let active = true;
+    getLearnerProfileAction().then((res) => {
+      if (active && res.ok) setData(res.data);
+      if (active && !res.ok) setStatus({ kind: "error", msg: res.error });
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const save = async () => {
     setStatus({ kind: "saving" });
@@ -83,7 +103,7 @@ export default function ProfilePage() {
         <CardHeader title="Informasi dasar" subtitle="Informasi publik yang terlihat oleh mentor Anda" />
         <div className="space-y-4">
           <div className="flex items-center gap-4 mb-2">
-            <div className="h-16 w-16 rounded-full bg-linear-to-br from-primary to-[#1E40AF] grid place-items-center text-white text-xl font-bold">{DEMO_LEARNER.avatarInitials}</div>
+            <div className="h-16 w-16 rounded-full bg-linear-to-br from-primary to-[#1E40AF] grid place-items-center text-white text-xl font-bold">{initialsOf(data.name || data.email)}</div>
             <div>
               <p className="font-semibold">{data.name}</p>
               <p className="text-xs text-foreground-muted">{data.email}</p>

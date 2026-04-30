@@ -1,7 +1,6 @@
 import { getSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { AppShell, type NavItem } from "@/components/app-shell";
-import { DEMO_INSTITUTION } from "@/lib/demo-data";
 
 const NAV: NavItem[] = [
   { href: "/institution/dashboard", label: "Dashboard", labelKey: "nav.dashboard", primary: true },
@@ -11,19 +10,30 @@ const NAV: NavItem[] = [
   { href: "/institution/profile",   label: "Profil",    labelKey: "nav.profile",   primary: true },
 ];
 
+function initialsOf(value: string) {
+  return value
+    .split(/[\s@._-]+/)
+    .filter(Boolean)
+    .map((part) => part[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase() || "IN";
+}
+
 export default async function InstitutionLayout({ children }: { children: React.ReactNode }) {
   const session = await getSession();
   if (!session || session.role !== "INSTITUTION_MANAGER") redirect("/login");
+  const displayName = session.name || session.email;
 
   return (
     <AppShell
       brandHref="/institution/dashboard"
       navItems={NAV}
       user={{
-        name: (session.email as string) || DEMO_INSTITUTION.name,
+        name: displayName,
         role: "Institution Manager",
         roleKey: "role.institution",
-        initials: "UT",
+        initials: initialsOf(displayName),
       }}
     >
       {children}
