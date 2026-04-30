@@ -1,7 +1,6 @@
 import { getSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { AppShell, type NavItem } from "@/components/app-shell";
-import { DEMO_LEARNER } from "@/lib/demo-data";
 
 const NAV: NavItem[] = [
   { href: "/dashboard",      label: "Dashboard",      labelKey: "nav.dashboard",      primary: true },
@@ -30,19 +29,30 @@ const NAV: NavItem[] = [
   { href: "/mock-interview", label: "Mock Interview", labelKey: "nav.mockInterview" },
 ];
 
+function initialsOf(value: string) {
+  return value
+    .split(/[\s@._-]+/)
+    .filter(Boolean)
+    .map((part) => part[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase() || "LR";
+}
+
 export default async function LearnerLayout({ children }: { children: React.ReactNode }) {
   const session = await getSession();
   if (!session || session.role !== "LEARNER") redirect("/login");
+  const displayName = session.name || session.email;
 
   return (
     <AppShell
       brandHref="/dashboard"
       navItems={NAV}
       user={{
-        name: (session.email as string) || DEMO_LEARNER.name,
+        name: displayName,
         role: "Learner",
         roleKey: "role.learner",
-        initials: DEMO_LEARNER.avatarInitials,
+        initials: initialsOf(displayName),
       }}
     >
       {children}

@@ -1,4 +1,5 @@
 import { logger } from "@/lib/logger";
+import { getRuntimeEnv } from "@/lib/env";
 
 export type TransactionalEmail = {
   html: string;
@@ -56,11 +57,12 @@ export function buildEmailVerificationMessage({ appUrl, email, token }: AccountE
 }
 
 export async function sendTransactionalEmail(email: TransactionalEmail) {
-  const provider = process.env.EMAIL_PROVIDER || "console";
+  const runtimeEnv = getRuntimeEnv();
+  const provider = runtimeEnv.EMAIL_PROVIDER;
 
   if (provider === "resend") {
-    const apiKey = process.env.RESEND_API_KEY;
-    const from = process.env.EMAIL_FROM;
+    const apiKey = runtimeEnv.RESEND_API_KEY;
+    const from = runtimeEnv.EMAIL_FROM;
 
     if (!apiKey || !from) {
       throw new Error("RESEND_API_KEY and EMAIL_FROM are required when EMAIL_PROVIDER=resend.");

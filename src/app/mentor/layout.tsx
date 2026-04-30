@@ -1,7 +1,6 @@
 import { getSession } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { AppShell, type NavItem } from "@/components/app-shell";
-import { DEMO_MENTOR } from "@/lib/demo-data";
 
 const NAV: NavItem[] = [
   { href: "/mentor/dashboard", label: "Dashboard", labelKey: "nav.dashboard", primary: true },
@@ -10,19 +9,30 @@ const NAV: NavItem[] = [
   { href: "/mentor/profile",   label: "Profil",    labelKey: "nav.profile",   primary: true },
 ];
 
+function initialsOf(value: string) {
+  return value
+    .split(/[\s@._-]+/)
+    .filter(Boolean)
+    .map((part) => part[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase() || "MT";
+}
+
 export default async function MentorLayout({ children }: { children: React.ReactNode }) {
   const session = await getSession();
   if (!session || session.role !== "MENTOR") redirect("/login");
+  const displayName = session.name || session.email;
 
   return (
     <AppShell
       brandHref="/mentor/dashboard"
       navItems={NAV}
       user={{
-        name: (session.email as string) || DEMO_MENTOR.name,
+        name: displayName,
         role: "Mentor",
         roleKey: "role.mentor",
-        initials: "RA",
+        initials: initialsOf(displayName),
       }}
     >
       {children}

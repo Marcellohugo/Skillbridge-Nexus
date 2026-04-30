@@ -1,12 +1,12 @@
-# SkillBridge Nexus - Dokumentasi Eksekutif
+# SkillBridge Nexus - Ringkasan Eksekutif
 
-Dokumen ini adalah ringkasan eksekutif dari SkillBridge Nexus, platform yang saya bangun untuk menjembatani gap antara pembelajaran, kesiapan karir, dan validasi kompetensi. Versi teknis lengkap tersedia di [docs/README.md](docs/README.md).
+Dokumen ini adalah ringkasan eksekutif SkillBridge Nexus, platform untuk menjembatani gap antara pembelajaran, kesiapan karier, dan validasi kompetensi. Versi teknis lengkap tersedia di [docs/README.md](README.md).
 
 ## Tujuan Produk
 
-Saya merancang SkillBridge Nexus untuk menjawab masalah umum pada learner dan institusi:
+SkillBridge Nexus dirancang untuk menjawab masalah umum pada learner dan institusi:
 
-- Learner sulit mengetahui gap skill terhadap role karir yang dituju.
+- Learner sulit mengetahui gap skill terhadap role karier yang dituju.
 - Learning path sering terlalu generik dan tidak membaca prioritas personal.
 - Mentor matching biasanya tidak transparan dan tidak berbasis bukti.
 - Portfolio sering hanya menjadi etalase, bukan evidence yang terhubung ke kompetensi.
@@ -51,6 +51,6 @@ Produk sudah melewati tahap template. Saat ini aplikasi memiliki alur auth, onbo
 | Admin | `admin@skillbridge.id` | `password123` |
 | Institution | `institution@skillbridge.id` | `password123` |
 
-## Catatan Kepemilikan
+## Catatan
 
-Saya menulis dokumentasi ini dengan gaya profesional agar proyek mudah dinilai, dipresentasikan, dan dilanjutkan. Penjelasan lengkap tentang arsitektur, data model, algoritma, UI/UX, aksesibilitas, setup, dan operasi produksi berada di folder [docs](docs/README.md).
+Dokumentasi ini disimpan di folder `docs` agar root repository hanya memiliki satu README utama. Penjelasan lengkap tentang arsitektur, data model, algoritma, UI/UX, aksesibilitas, setup, dan operasi produksi berada di folder [docs](README.md).

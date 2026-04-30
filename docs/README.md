@@ -19,6 +19,7 @@ Dokumentasi ini merangkum keseluruhan SkillBridge Nexus: tujuan produk, arsitekt
 
 | Dokumen | Isi |
 |---|---|
+| [Ringkasan Eksekutif](EXECUTIVE_SUMMARY.md) | Ringkasan tujuan, nilai utama, status produk, stack, dan demo cepat |
 | [Gambaran Produk](PRODUCT_OVERVIEW.md) | Latar belakang, visi awal, pengguna inti |
 | [Visi Produk & Repositioning](PRODUCT_VISION.md) | Repositioning ke Pathway Readiness Platform |
 | [Pathway Readiness](PATHWAY_READINESS.md) | Pathway, segmen user, PRI, Readiness Taxonomy, Evidence Bank, Support Network, use case |
@@ -70,8 +71,8 @@ Dokumentasi ini merangkum keseluruhan SkillBridge Nexus: tujuan produk, arsitekt
 
 | Audiens | Mulai dari |
 |---|---|
-| Penilai produk / juri lomba | [PRODUCT_VISION](PRODUCT_VISION.md) → [PATHWAY_READINESS](PATHWAY_READINESS.md) → [FEATURES](FEATURES.md) → [IMPACT_AND_KPI](IMPACT_AND_KPI.md) → [DEMO_GUIDE](DEMO_GUIDE.md) |
-| Stakeholder pitch | [PRODUCT_VISION](PRODUCT_VISION.md) → [ROADMAP](ROADMAP.md) → [IMPACT_AND_KPI](IMPACT_AND_KPI.md) → [MENTOR_CONTENT_STUDIO](MENTOR_CONTENT_STUDIO.md) |
+| Penilai produk / juri lomba | [EXECUTIVE_SUMMARY](EXECUTIVE_SUMMARY.md) → [PRODUCT_VISION](PRODUCT_VISION.md) → [PATHWAY_READINESS](PATHWAY_READINESS.md) → [FEATURES](FEATURES.md) → [IMPACT_AND_KPI](IMPACT_AND_KPI.md) → [DEMO_GUIDE](DEMO_GUIDE.md) |
+| Stakeholder pitch | [EXECUTIVE_SUMMARY](EXECUTIVE_SUMMARY.md) → [PRODUCT_VISION](PRODUCT_VISION.md) → [ROADMAP](ROADMAP.md) → [IMPACT_AND_KPI](IMPACT_AND_KPI.md) → [MENTOR_CONTENT_STUDIO](MENTOR_CONTENT_STUDIO.md) |
 | Developer baru | [ARCHITECTURE](ARCHITECTURE.md) → [DATA_MODEL](DATA_MODEL.md) → [API_AND_SERVER_LOGIC](API_AND_SERVER_LOGIC.md) → [SETUP_AND_LOCAL_DEVELOPMENT](SETUP_AND_LOCAL_DEVELOPMENT.md) |
 | Reviewer UI/UX | [UI_UX_STRUCTURE](UI_UX_STRUCTURE.md) → [ACCESSIBILITY](ACCESSIBILITY.md) |
 | Operasi production | [PRODUCTION_OPERATIONS](PRODUCTION_OPERATIONS.md) → [NONFUNCTIONAL_REQUIREMENTS](NONFUNCTIONAL_REQUIREMENTS.md) → [SETUP_AND_LOCAL_DEVELOPMENT](SETUP_AND_LOCAL_DEVELOPMENT.md) |
