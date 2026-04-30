@@ -120,6 +120,7 @@ npm run db:seed
 
 Dokumentasi lengkap ada di folder [docs](docs/README.md):
 
+- [Ringkasan Eksekutif](docs/EXECUTIVE_SUMMARY.md)
 - [Gambaran Produk](docs/PRODUCT_OVERVIEW.md)
 - [Visi Produk & Repositioning](docs/PRODUCT_VISION.md)
 - [Pathway Readiness](docs/PATHWAY_READINESS.md)

@@ -1,10 +1,10 @@
 services:
   db:
     image: postgres:16-alpine
-    container_name: kuchink_garonk_db_dev
+    container_name: skillbridge_nexus_db_dev
     restart: unless-stopped
     environment:
-      POSTGRES_DB: kuchink_garonk
+      POSTGRES_DB: skillbridge_nexus
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
@@ -12,14 +12,14 @@ services:
     volumes:
       - postgres_dev_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d kuchink_garonk"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d skillbridge_nexus"]
       interval: 10s
       timeout: 5s
       retries: 5
 
   app-dev:
     image: node:22-alpine
-    container_name: kuchink_garonk_app_dev
+    container_name: skillbridge_nexus_app_dev
     working_dir: /app
     restart: unless-stopped
     depends_on:
@@ -30,7 +30,7 @@ services:
       NEXT_TELEMETRY_DISABLED: "1"
       CHOKIDAR_USEPOLLING: "true"
       WATCHPACK_POLLING: "true"
-      DATABASE_URL: postgresql://postgres:postgres@db:5432/kuchink_garonk?schema=public
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/skillbridge_nexus?schema=public
       JWT_SECRET: development-secret-key-minimum-32-chars
       APP_URL: http://localhost:3000
       EMAIL_PROVIDER: console
