@@ -1,5 +1,5 @@
 // Diagnostic assessment bank — used by the assessment flow.
-// Questions are mapped to the same skill names as DEMO_SKILL_GAPS for coherent storytelling.
+// Questions are mapped to seeded skill names for coherent assessment scoring.
 
 export type Question = {
   id: string;

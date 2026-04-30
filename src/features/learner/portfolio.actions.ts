@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
 import { recalcTRIForLearner, logActivity } from "@/features/shared/recalc";
+import { computePortfolioEvidenceStrength } from "./portfolio-evidence";
 
 export interface PortfolioSkill {
   skillId: string;
@@ -27,25 +28,6 @@ export interface PortfolioProjectDTO {
   createdAt: string;
   updatedAt: string;
   skills: PortfolioSkill[];
-}
-
-// Evidence strength heuristic (0-10):
-// +1 for having title, +1 desc > 80 chars, +2 projectUrl set,
-// +2 per 2 skills up to 4, +2 validated, +1 completedAt set.
-function computeEvidenceStrength(input: {
-  description: string;
-  projectUrl: string | null;
-  skills: number;
-  isValidated: boolean;
-  completedAt: Date | null;
-}): number {
-  let s = 1; // baseline for title being present (guarded in upstream)
-  if (input.description.length > 80) s += 1;
-  if (input.projectUrl) s += 2;
-  s += Math.min(4, Math.floor(input.skills / 2) * 2);
-  if (input.isValidated) s += 2;
-  if (input.completedAt) s += 1;
-  return Math.min(10, s);
 }
 
 function serialize(p: Awaited<ReturnType<typeof fetchRaw>>[number]): PortfolioProjectDTO {
@@ -140,7 +122,7 @@ export async function createPortfolioProjectAction(
     if (!profile) return { ok: false, error: "Profil learner tidak ditemukan." };
 
     const completedAt = payload.completedAt ? new Date(payload.completedAt) : null;
-    const evidenceStrength = computeEvidenceStrength({
+    const evidenceStrength = computePortfolioEvidenceStrength({
       description: payload.description,
       projectUrl: payload.projectUrl ?? null,
       skills: payload.skillIds.length,
@@ -215,12 +197,19 @@ export async function updatePortfolioProjectAction(
 
     const existing = await db.portfolioProject.findUnique({
       where: { id: payload.id },
-      select: { learnerId: true, description: true, projectUrl: true, isValidated: true, completedAt: true },
+      select: {
+        _count: { select: { skillMappings: true } },
+        completedAt: true,
+        description: true,
+        isValidated: true,
+        learnerId: true,
+        projectUrl: true,
+      },
     });
     if (!existing) return { ok: false, error: "Proyek tidak ditemukan." };
     if (existing.learnerId !== profile.id) return { ok: false, error: "Anda bukan pemilik proyek." };
 
-    if (payload.skillIds) {
+    if (payload.skillIds !== undefined) {
       await db.portfolioEvidenceSkill.deleteMany({ where: { projectId: payload.id } });
     }
 
@@ -228,10 +217,10 @@ export async function updatePortfolioProjectAction(
       ? (payload.completedAt ? new Date(payload.completedAt) : null)
       : existing.completedAt;
 
-    const evidenceStrength = computeEvidenceStrength({
+    const evidenceStrength = computePortfolioEvidenceStrength({
       description: payload.description ?? existing.description,
       projectUrl: payload.projectUrl ?? existing.projectUrl,
-      skills: payload.skillIds?.length ?? 0,
+      skills: payload.skillIds?.length ?? existing._count.skillMappings,
       isValidated: existing.isValidated,
       completedAt,
     });
@@ -245,7 +234,7 @@ export async function updatePortfolioProjectAction(
         ...(payload.techStack !== undefined ? { techStack: payload.techStack } : {}),
         ...(payload.completedAt !== undefined ? { completedAt } : {}),
         evidenceStrength,
-        ...(payload.skillIds
+        ...(payload.skillIds !== undefined
           ? {
               skillMappings: {
                 create: payload.skillIds.map((skillId) => ({ skillId, strength: 3 })),

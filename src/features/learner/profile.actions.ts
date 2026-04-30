@@ -14,6 +14,41 @@ export interface ProfileUpdatePayload {
   languagePreference: string;
 }
 
+export async function getLearnerProfileAction() {
+  const session = await getSession();
+  if (!session || session.role !== "LEARNER") {
+    return { ok: false as const, error: "Sesi tidak valid." };
+  }
+
+  try {
+    const profile = await db.learnerProfile.findUnique({
+      where: { userId: session.userId },
+      include: {
+        targetCareerRole: { select: { slug: true } },
+        user: { select: { email: true, name: true } },
+      },
+    });
+    if (!profile) return { ok: false as const, error: "Profil learner tidak ditemukan." };
+
+    return {
+      ok: true as const,
+      data: {
+        careerTargetSlug: profile.targetCareerRole?.slug ?? "",
+        educationStatus: profile.educationStatus,
+        email: profile.user.email,
+        language: profile.languagePreference,
+        learningStyle: profile.learningStyle,
+        mentoringStyle: profile.mentoringStyle,
+        name: profile.user.name || profile.fullName,
+        weeklyHours: profile.weeklyHours,
+      },
+    };
+  } catch (err) {
+    console.error("getLearnerProfileAction error", err);
+    return { ok: false as const, error: "Gagal memuat profil." };
+  }
+}
+
 export async function updateLearnerProfileAction(payload: ProfileUpdatePayload) {
   const session = await getSession();
   if (!session || session.role !== "LEARNER") {
