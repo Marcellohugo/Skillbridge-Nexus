@@ -1,13 +1,25 @@
 import { jwtVerify, SignJWT } from "jose";
 import { cookies } from "next/headers";
 import { getJwtSecretKey } from "./auth-config";
+import { db } from "./db";
 
 export interface JWTPayload {
   userId: string;
   email: string;
+  name?: string;
   role: string;
   [key: string]: unknown;
 }
+
+type SessionLookupUser = {
+  email: string;
+  id: string;
+  isActive: boolean;
+  name?: string;
+  role: string;
+};
+
+type FindSessionUser = (userId: string) => Promise<SessionLookupUser | null>;
 
 export async function createToken(payload: JWTPayload): Promise<string> {
   const token = await new SignJWT(payload)
@@ -27,6 +39,31 @@ export async function verifyToken(token: string): Promise<JWTPayload | null> {
   }
 }
 
+export async function resolveSessionPayload(
+  payload: JWTPayload | null,
+  findUser: FindSessionUser = (userId) =>
+    db.user.findUnique({
+      where: { id: userId },
+      select: { email: true, id: true, isActive: true, name: true, role: true },
+    }),
+): Promise<JWTPayload | null> {
+  if (!payload?.userId || typeof payload.userId !== "string") {
+    return null;
+  }
+
+  const user = await findUser(payload.userId);
+  if (!user?.isActive) {
+    return null;
+  }
+
+  return {
+    email: user.email,
+    ...(user.name ? { name: user.name } : {}),
+    role: user.role,
+    userId: user.id,
+  };
+}
+
 export async function getSession(): Promise<JWTPayload | null> {
   try {
     const cookieStore = await cookies();
@@ -34,7 +71,8 @@ export async function getSession(): Promise<JWTPayload | null> {
 
     if (!token) return null;
 
-    return await verifyToken(token);
+    const payload = await verifyToken(token);
+    return await resolveSessionPayload(payload);
   } catch {
     return null;
   }

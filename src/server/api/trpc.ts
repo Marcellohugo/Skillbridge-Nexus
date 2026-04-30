@@ -1,7 +1,13 @@
 import { initTRPC } from "@trpc/server";
 import superjson from "superjson";
 
-const t = initTRPC.create({
+import type { JWTPayload } from "@/lib/auth";
+
+export type TRPCContext = {
+  session: JWTPayload | null;
+};
+
+const t = initTRPC.context<TRPCContext>().create({
   transformer: superjson,
 });
 

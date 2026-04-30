@@ -1,3 +1,5 @@
+import { getRuntimeEnv } from "@/lib/env";
+
 type RateLimitOptions = {
   maxAttempts: number;
   windowMs: number;
@@ -151,12 +153,14 @@ export function createUpstashFixedWindowRateLimit({
 }
 
 function createRateLimiter(prefix: string, maxAttempts: number, windowMs: number): AsyncRateLimiter {
-  if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
+  const runtimeEnv = getRuntimeEnv();
+
+  if (runtimeEnv.UPSTASH_REDIS_REST_URL && runtimeEnv.UPSTASH_REDIS_REST_TOKEN) {
     return createUpstashFixedWindowRateLimit({
       maxAttempts,
       prefix,
-      token: process.env.UPSTASH_REDIS_REST_TOKEN,
-      url: process.env.UPSTASH_REDIS_REST_URL,
+      token: runtimeEnv.UPSTASH_REDIS_REST_TOKEN,
+      url: runtimeEnv.UPSTASH_REDIS_REST_URL,
       windowMs,
     });
   }
@@ -167,6 +171,24 @@ function createRateLimiter(prefix: string, maxAttempts: number, windowMs: number
   });
 }
 
-export const loginRateLimit = createRateLimiter("login", 5, 10 * 60 * 1_000);
+function lazyRateLimiter(prefix: string, maxAttempts: number, windowMs: number): AsyncRateLimiter {
+  let instance: AsyncRateLimiter | null = null;
 
-export const passwordResetRateLimit = createRateLimiter("password-reset", 3, 15 * 60 * 1_000);
+  function current() {
+    instance ??= createRateLimiter(prefix, maxAttempts, windowMs);
+    return instance;
+  }
+
+  return {
+    check(key, now) {
+      return current().check(key, now);
+    },
+    reset(key) {
+      return current().reset(key);
+    },
+  };
+}
+
+export const loginRateLimit = lazyRateLimiter("login", 5, 10 * 60 * 1_000);
+
+export const passwordResetRateLimit = lazyRateLimiter("password-reset", 3, 15 * 60 * 1_000);

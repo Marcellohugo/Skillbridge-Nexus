@@ -82,4 +82,6 @@ export function parseEnv(source: NodeJS.ProcessEnv) {
   });
 }
 
-export const env = parseEnv(process.env);
+export function getRuntimeEnv(source: NodeJS.ProcessEnv = process.env) {
+  return parseEnv(source);
+}
